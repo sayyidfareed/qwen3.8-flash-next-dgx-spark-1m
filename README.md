@@ -15,26 +15,29 @@ tags:
 - speculative-decoding
 ---
 
-# 1,000,000 tokens. One 128 GB DGX Spark.
+# One million tokens on one 128 GB DGX Spark
 
-**Qwen3.8-Flash-Next, 989,801 tokens end to end, 5/5 retrieval, 26.7 tok/s
-decode, and 92.7% HumanEval+ Mini—on one NVIDIA DGX Spark / ASUS GX10.**
+On an ASUS GX10, this Qwen3.8-Flash-Next setup handled a 989,734-token prompt,
+returned all five buried values, and generated 67 more tokens. Short prompts
+decoded at a 26.7 tok/s median, and the same profile scored 92.7% on HumanEval+
+Mini.
 
-The excellent upstream
+The upstream
 [Qwen3.8-Flash-DGX](https://github.com/blazux/qwen3.8-Flash-DGX)
-recipe proved 500K context and accurately called 1M out of reach with its
-original memory policy. This repository changes that policy, not the model.
+project got this model to 500K on the same class of machine. Its original memory
+policy ran out of room before 1M. I kept the model and its mmap-based PLE
+offload, then changed how those mapped pages are handled under memory pressure.
 
-It keeps the giant PLE lookup table memory-mapped on NVMe, tells Linux that the
-access pattern is random, and releases clean PLE pages before they crowd out the
-growing KV cache. The result is a real, tested one-million-token serving profile
-with native MTP speculative decoding still enabled.
+The PLE lookup table stays memory-mapped on NVMe. Linux is told to expect random
+access, and clean PLE pages are released before they squeeze the growing KV
+cache. That was enough to serve a near-limit request while keeping native MTP
+speculative decoding enabled.
 
 > This repository contains serving code and benchmark artifacts, **not model
 > weights**. The code is Apache-2.0. The Qwen/RadixArk checkpoint has separate
 > terms; review the source model card before use.
 
-## The proof, not the promise
+## Measured on the GX10
 
 | Test | Result |
 |---|---:|
@@ -60,8 +63,8 @@ Requirements:
 
 - DGX Spark, ASUS GX10, or compatible GB10 system with 128 GB unified memory
 - NVIDIA container runtime and Docker
-- roughly 130 GB of fast local storage; NVMe is strongly recommended
-- patience for the initial checkpoint download and roughly 10-minute cold load
+- about 130 GB of fast local storage; NVMe is strongly recommended
+- roughly 10 minutes for a cold model load on the tested machine
 
 ```bash
 git clone https://github.com/sayyidfareed/qwen3.8-flash-next-dgx-spark-1m.git
@@ -88,9 +91,9 @@ curl http://localhost:11002/v1/chat/completions \
   }'
 ```
 
-## The exact 1M profile
+## The 1M serving profile
 
-`scripts/serve-1m.sh` is only a pinned wrapper around the upstream serve script:
+`scripts/serve-1m.sh` is a pinned wrapper around the upstream serve script:
 
 ```text
 CTX=1000000
@@ -105,7 +108,7 @@ PLE_TRIM_MIB=8192
 PLE_TRIM_MIN_ROWS=1024
 ```
 
-Why each non-default matters:
+Why these values:
 
 - **YaRN factor 4** follows Qwen's published recipe for extending the native
   262,144-token window to one million tokens.
@@ -116,11 +119,11 @@ Why each non-default matters:
   unified memory becomes critical.
 - **1,024-row trim threshold** keeps the trim path out of single-token decode.
 
-## The one idea that unlocked 1M
+## Where the extra memory came from
 
 Flash-Next has an enormous n-gram/PLE lookup table. The upstream recipe already
-made the crucial move: mmap the table instead of permanently loading it beside
-the GPU weights.
+memory-maps that table instead of permanently loading it beside the GPU
+weights.
 
 At ultra-long context, Linux's page cache becomes the next bottleneck. PLE rows
 are hash-selected, so normal sequential readahead is mostly waste. Meanwhile,
@@ -138,7 +141,7 @@ cannot change the current result. The included CPU regression verifies
 bit-identical gathers from one through 131,072 rows, the placeholder FP8 path,
 range checks, prewarming, and forced trimming.
 
-## Quality: what did 1M cost?
+## Short-context quality check
 
 We reran the complete short coding suite because this recipe uses the RadixArk
 checkpoint, while the strongest earlier Flash-Next result used a different
@@ -149,13 +152,13 @@ checkpoint, while the strongest earlier Flash-Next result used a different
 | `starkweatherdigital`, standard MTP1 | 157/164 | 155/164 | 34/34 | 27.633 tok/s |
 | **RadixArk, 1M YaRN + MTP1** | **156/164** | **152/164** | **34/34** | **26.712 tok/s** |
 
-That is a modest but measurable quality difference. Because both the checkpoint
-and serving profile changed, it would be dishonest to blame YaRN alone. Treat
-the 1M profile as a separate deployment target, not a drop-in benchmark alias.
+The 1M run is slightly behind the earlier result. Both the checkpoint and the
+serving profile changed, so this comparison does not isolate the effect of YaRN.
+The two rows should be treated as separate deployment targets.
 
-## Reproduce the headline test
+## Run the 989K test
 
-First run the cheap 5K smoke probe:
+Start with the 5K smoke probe:
 
 ```bash
 python3 benchmarks/long_context_probe.py \
@@ -164,8 +167,8 @@ python3 benchmarks/long_context_probe.py \
   --output results/smoke-5k.json
 ```
 
-The near-limit proof takes about 17 minutes on the validated machine and sends a
-multi-megabyte request. Run it only after the smoke test succeeds:
+The near-limit run takes about 17 minutes on the tested machine and sends a
+multi-megabyte request. Run it after the smoke test succeeds:
 
 ```bash
 python3 benchmarks/long_context_probe.py \
@@ -180,7 +183,7 @@ The prompt uses deterministic varied archive records and inserts five unique
 needles at roughly 5%, 25%, 50%, 75%, and 95%. It is a retrieval and operational
 stability test, not a comprehensive long-context reasoning benchmark.
 
-## Limits you should understand
+## Operational limits
 
 - **Prompt plus output must remain below one million.** The validated 989,801-
   token request leaves 10,199 tokens of headroom.
@@ -220,6 +223,6 @@ from the pinned upstream commit.
   upstream reproduction and concurrency/offload investigation.
 - vLLM and NVIDIA Model Optimizer for the serving and quantization stack.
 
-If you reproduce 1M on another Spark, open an issue with your exact KV capacity,
-minimum `MemAvailable`, storage model, and result JSON. One machine is a result;
-multiple machines are a recipe.
+If you try this on another Spark, please open an issue with the KV capacity,
+minimum `MemAvailable`, storage model, and result JSON. I would especially like
+to see results from other NVMe drives and OEM GB10 systems.
