@@ -1,0 +1,273 @@
+{
+  "version": "coding-microbench-v1.1",
+  "model": "qwen3.8-flash-next",
+  "base_url": "http://gx10:11002",
+  "temperature": 0,
+  "reasoning_effort": null,
+  "tool_choice": "none",
+  "max_tokens": {
+    "multiple_choice": 512,
+    "generation": 700,
+    "protocol_retry_ceiling": 2048
+  },
+  "sections": {
+    "reasoning": {
+      "score": 20,
+      "total": 20,
+      "cases": [
+        {
+          "id": 1,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In Python, closures capture variables by reference, not by value. The variable `i` in the lambda functions refers to the same variable in the enclosing scope. By the time the lambdas are executed, the loop has completed, and `i` holds its final value, which is 2. Therefore, all functions return 2.\n\nANSWER: B",
+          "elapsed_s": 3.0738231248687953,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 2,
+          "expected": "C",
+          "got": "C",
+          "pass": true,
+          "raw": "In Go, an unbuffered channel requires a receiver to be ready to accept the value before the sender can proceed. If the main goroutine attempts to send to an unbuffered channel and no other goroutine is currently blocked on a receive operation for that channel, the send operation blocks indefinitely. Since the main goroutine is the only one running (or at least, no receiver is active), the program hangs, resulting in a runtime deadlock. It is not a compile error because the syntax is valid, and it is not nondeterministic because the behavior is deterministic: it will always block if no receiver is present.\n\nANSWER: C",
+          "elapsed_s": 5.456601541955024,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 3,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In Rust, `String` does not implement the `Copy` trait. When you perform `let t = s;`, ownership of the string data is moved from `s` to `t`. Consequently, `s` is no longer valid. Attempting to use `s` (e.g., in a `println!` macro) after this move results in a compile-time error because the borrow checker prevents use-after-move errors.\n\nANSWER: B",
+          "elapsed_s": 3.791487499838695,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 4,
+          "expected": "C",
+          "got": "C",
+          "pass": true,
+          "raw": "To determine the output order, we analyze the JavaScript event loop behavior for the given code snippet:\n\n1.  **`log A`**: This is synchronous code. It executes immediately. Output: `A`.\n2.  **`resolved Promise.then log B`**: The `.then()` callback is a microtask. Microtasks are queued and executed after the current synchronous code finishes but before any macrotasks (like `setTimeout`).\n3.  **`setTimeout log C 0`**: This is a macrotask. It is queued to be executed after the current call stack and all microtasks are cleared. Even with a delay of 0, it waits for the microtask queue to empty.\n4.  **`log D`**: This is synchronous code. It executes immediately after the previous synchronous statements. Output: `D`.\n\n**Execution Flow:**\n-   Synchronous execution runs: `log A` -> `log D`. Current output: `A, D`.\n-   The synchronous stack is empty. The event loop checks the microtask queue.\n-   The Promise `.then` callback (`log B`) is a microtask. It executes now. Current output: `A, D, B`.\n-   The microtask queue is empty. The event loop checks the macrotask queue.\n-   The `setTimeout` callback (`log C`) is a macrotask. It executes now. Current output: `A, D, B, C`.\n\nThe final order is A, D, B, C.\n\nANSWER: C",
+          "elapsed_s": 12.291085750097409,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 5,
+          "expected": "C",
+          "got": "C",
+          "pass": true,
+          "raw": "In SQL, the `NOT IN` operator is logically equivalent to a series of `AND` conditions with `<>`. Therefore, `3 NOT IN (1, 2, NULL)` is evaluated as `3 <> 1 AND 3 <> 2 AND 3 <> NULL`.\n\nWhile `3 <> 1` is TRUE and `3 <> 2` is TRUE, the comparison `3 <> NULL` results in `UNKNOWN` (or NULL) because any comparison with NULL is unknown. In SQL's three-valued logic, `TRUE AND TRUE AND UNKNOWN` results in `UNKNOWN`. Consequently, the entire expression evaluates to NULL/UNKNOWN, not TRUE or FALSE.\n\nANSWER: C",
+          "elapsed_s": 5.442899624817073,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 6,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In C, `unsigned` integers are non-negative. When `i` is 0, the condition `i >= 0` is true. After the body executes, `--i` decrements 0. For unsigned types, this wraps around to the maximum value (e.g., `UINT_MAX`), which is still `>= 0`. Therefore, the loop condition never becomes false, resulting in an infinite loop.\n\nANSWER: B",
+          "elapsed_s": 3.8257535831071436,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 7,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In Python, default arguments are evaluated only once when the function is defined, not each time the function is called. If a mutable object like a list is used as a default argument, that same object instance is shared across all calls. Therefore, if the function appends to this list, the changes persist. For example, if the default is `[]` and the function appends `1`, the first call returns `[1]`. On the second call, the default list is still `[1]`, so appending `2` results in `[1, 2]`. This behavior demonstrates that the list is shared, not fresh.\n\nANSWER: B",
+          "elapsed_s": 5.353390834061429,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 8,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "Dijkstra's algorithm using a binary heap (or Fibonacci heap) for the priority queue achieves a time complexity of $O((V+E) \\log V)$ when using a binary heap. This is because each vertex is extracted from the heap once ($O(V \\log V)$) and each edge relaxation may trigger a decrease-key operation ($O(E \\log V)$). Option A ($O(V^2)$) corresponds to the array-based implementation, while Option C ($O(EV)$) is typical of Bellman-Ford. Option D is incorrect as it ignores the graph size.\n\nANSWER: B",
+          "elapsed_s": 5.264205750077963,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 9,
+          "expected": "C",
+          "got": "C",
+          "pass": true,
+          "raw": "When two threads perform a non-atomic `counter++` operation starting from 0, the operation typically involves three steps: read the current value, increment it, and write the new value back. Because these steps are not atomic, race conditions can occur.\n\n1.  **Result 2**: If the threads execute sequentially or interleave in a way that both read 0, increment to 1, and write 1, but then one reads 1, increments to 2, and writes 2, the final result is 2. This is the expected result if no data is lost.\n2.  **Result 1**: If both threads read the initial value 0 simultaneously, both increment it to 1 in their local registers, and then both write 1 back to memory, the second write overwrites the first. The final result is 1. This is a classic lost-update race condition.\n3.  **Result 0**: It is impossible for the final result to be 0 because both threads are incrementing the value. Even in the worst-case race condition where updates are lost, the value written back is at least 1 (since they read 0 and wrote 1). There is no mechanism here to decrement the counter or write 0 back.\n\nTherefore, the possible final values are 1 or 2.\n\nANSWER: C",
+          "elapsed_s": 11.219443499809131,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 10,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In Python, `float('nan')` creates a floating-point number representing \"Not a Number\". When converting any non-zero numeric value to a boolean using `bool()`, the result is `True`. Although NaN is a special value, it is not considered zero in the context of boolean conversion. Specifically, `bool(0.0)` is `False`, but `bool(float('nan'))` evaluates to `True` because NaN is not equal to zero. It does not raise a `ValueError`, nor is it platform-dependent in standard CPython implementations.\n\nANSWER: B",
+          "elapsed_s": 5.052347665885463,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 11,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "After a `fork()` in a multithreaded process, the child process contains only the thread that called `fork()`. All other threads are terminated abruptly, potentially leaving mutexes, locks, and internal data structures in an inconsistent or locked state.\n\nBecause of this, calling functions that might acquire locks (like `malloc`, `printf`, or most standard libc functions) can lead to deadlocks or undefined behavior. The POSIX standard specifies that between `fork()` and `exec()`, the child process should only call **async-signal-safe** functions. These functions are guaranteed to be safe to call from a signal handler and, by extension, are generally safe in this restricted post-fork context because they do not rely on locks that might be held by the now-dead threads.\n\nANSWER: B",
+          "elapsed_s": 6.563835582928732,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 12,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "A rotated sorted array retains a specific structure where one half of the array is always sorted. By comparing the middle element with the first or last element, we can determine which half is sorted and whether the target lies within that range. This allows us to eliminate half of the search space in each step, similar to standard binary search. Therefore, the time complexity is logarithmic.\n\nANSWER: B",
+          "elapsed_s": 3.407076957868412,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 13,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "The `volatile` keyword in Java guarantees visibility of changes to variables across threads and prevents certain compiler optimizations, but it does not guarantee atomicity for compound actions. The increment operation `x++` is not a single atomic instruction; it consists of three distinct steps: reading the current value of `x`, incrementing that value, and writing the new value back to `x`. If multiple threads execute `x++` concurrently, these steps can interleave, leading to race conditions and lost updates. Therefore, `volatile` does not make `x++` atomic.\n\nANSWER: B",
+          "elapsed_s": 4.724287458928302,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 14,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In SQL, aggregate functions like `COUNT(column)` are designed to operate on non-NULL values. Specifically, `COUNT(column)` counts the number of rows where the specified column is not NULL. If you want to count all rows regardless of NULLs, you would use `COUNT(*)`. Therefore, NULL values are ignored by `COUNT(column)`.\n\nANSWER: B",
+          "elapsed_s": 3.2682845420204103,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 15,
+          "expected": "C",
+          "got": "C",
+          "pass": true,
+          "raw": "In a standard Bash environment without the `pipefail` option enabled, the exit status of a pipeline is determined solely by the exit status of the last command in the pipeline.\n\nThe command `false | true` consists of two parts:\n1. `false`: This command exits with a status of 1.\n2. `true`: This command exits with a status of 0.\n\nSince `true` is the last command in the pipeline, the overall exit status of the pipeline is 0. The `pipefail` option would change this behavior to return the first non-zero exit status (which would be 1), but the prompt explicitly states \"Bash without pipefail\".\n\nTherefore, the exit status is 0.\n\nANSWER: C",
+          "elapsed_s": 6.025571832899004,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 16,
+          "expected": "C",
+          "got": "C",
+          "pass": true,
+          "raw": "In HTTP semantics, a method is **idempotent** if making the same request multiple times produces the same result on the server as making it once. A method is **safe** if it does not modify server state (i.e., it is read-only).\n\n*   **POST**: Neither idempotent nor safe. Each request typically creates a new resource.\n*   **PATCH**: Not necessarily idempotent (depends on the patch operation) and not safe (modifies state).\n*   **PUT**: Idempotent (replacing a resource with the same data multiple times yields the same state) but **not safe** (it modifies server state).\n*   **CONNECT**: Not idempotent in the standard sense (establishes a tunnel) and not safe.\n\nTherefore, PUT is the method that is idempotent but not safe.\n\nANSWER: C",
+          "elapsed_s": 8.404766791965812,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 17,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In CUDA, `__syncthreads()` is a barrier synchronization primitive that requires **all** threads in the block to reach it. If some threads exit early (e.g., via `return` or `break`) and never reach the barrier, the remaining threads will wait indefinitely for the missing threads to arrive. This results in a deadlock or undefined behavior, as the hardware cannot guarantee progress. It is not a compile-time error, nor does it serialize execution safely.\n\nANSWER: B",
+          "elapsed_s": 4.172967333113775,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 18,
+          "expected": "A",
+          "got": "A",
+          "pass": true,
+          "raw": "Python dictionaries are implemented using hash tables. In the average case, assuming a good hash function and a low load factor, the hash of the key maps directly to a specific bucket, allowing for constant-time access regardless of the number of elements in the dictionary.\n\nANSWER: A",
+          "elapsed_s": 2.498088208027184,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 19,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "A non-repeatable read occurs when a transaction reads the same row twice and gets different data because another transaction has modified and committed that row in between the two reads. This violates the isolation level's guarantee that data read once will remain consistent for the duration of the transaction. A dirty read involves reading uncommitted data, a phantom read involves new rows appearing in a range query, and a lost update involves overwriting changes.\n\nANSWER: B",
+          "elapsed_s": 3.8262679579202086,
+          "max_tokens_used": 512
+        },
+        {
+          "id": 20,
+          "expected": "B",
+          "got": "B",
+          "pass": true,
+          "raw": "In TypeScript, `any` is assignable to every type and allows access to any property or method without type checking. In contrast, `unknown` is the top type that is only assignable to `any` and `unknown` itself. To use a value of type `unknown` (e.g., access properties, call methods, or perform arithmetic), you must first narrow its type through type guards or assertions. Therefore, `unknown` requires narrowing before most uses, whereas `any` does not.\n\nANSWER: B",
+          "elapsed_s": 4.4268508749082685,
+          "max_tokens_used": 512
+        }
+      ]
+    },
+    "generation": {
+      "score": 7,
+      "total": 7,
+      "cases": [
+        {
+          "id": "merge_half_open",
+          "pass": true,
+          "elapsed_s": 12.587941124802455,
+          "completion_tokens": 344,
+          "max_tokens_used": 700,
+          "code_sha256": "51924035c8d7f2af6c7e3419410bc63d8b9bcd2f78c9f12ba1706213f46b24e4",
+          "error": ""
+        },
+        {
+          "id": "topo_order",
+          "pass": true,
+          "elapsed_s": 14.497644333867356,
+          "completion_tokens": 394,
+          "max_tokens_used": 700,
+          "code_sha256": "7101fe128e6f440c6577577e8ee93b898c688dd66fe05b8334b44386e3b51d38",
+          "error": ""
+        },
+        {
+          "id": "lru_cache",
+          "pass": true,
+          "elapsed_s": 8.414939624955878,
+          "completion_tokens": 233,
+          "max_tokens_used": 700,
+          "code_sha256": "1207b66cbfac2cb18bd52c0f5b62f33af09806a69570539bfe9c48a40ca800b8",
+          "error": ""
+        },
+        {
+          "id": "minimum_window",
+          "pass": true,
+          "elapsed_s": 9.697296750033274,
+          "completion_tokens": 269,
+          "max_tokens_used": 700,
+          "code_sha256": "98c40ef83eef5934c9597711a004b35479f0c57591a9ddafbb1396fe2200cde4",
+          "error": ""
+        },
+        {
+          "id": "json_pointer_get",
+          "pass": true,
+          "elapsed_s": 9.119319709017873,
+          "completion_tokens": 247,
+          "max_tokens_used": 700,
+          "code_sha256": "3aa0cfdf80417272f3f631b9bb8cebb0a1ed60073b2169a37d0f99576c472227",
+          "error": ""
+        },
+        {
+          "id": "split_csv_record",
+          "pass": true,
+          "elapsed_s": 13.30372504121624,
+          "completion_tokens": 368,
+          "max_tokens_used": 700,
+          "code_sha256": "695c5173385270467e191714f04780138f6af6462ecf433121bee6cb567b4999",
+          "error": ""
+        },
+        {
+          "id": "bounded_map",
+          "pass": true,
+          "elapsed_s": 9.713602541945875,
+          "completion_tokens": 273,
+          "max_tokens_used": 700,
+          "code_sha256": "c2890ab5bd7d18bbfd771dca0740172055577a6e2381b000cd7e328574fafcc7",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "score": 34,
+  "max_score": 34,
+  "elapsed_s": 185.42350554093719
+}

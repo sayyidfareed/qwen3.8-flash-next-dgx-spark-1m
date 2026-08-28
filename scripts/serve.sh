@@ -18,6 +18,9 @@
 #   KV_DTYPE=auto     keep auto (=bf16): fp8 is refused by the QSA layers
 #   PREWARM=0         1 = stream the 48 GiB table once at boot to warm the page cache
 #   WORKERS=32        threads for the mmap gather
+#   BATCH_TOKENS=8192 chunked-prefill token budget (1024-2048 for ultra-long mode)
+#   PLE_TRIM_MIB=0     trim clean PLE cache below this MemAvailable watermark
+#   PLE_TRIM_MIN_ROWS=0 skip trim checks for smaller gathers (1024 avoids decode)
 #   EXTRA=            extra vllm flags passed verbatim
 #   IMAGE=qwen38-flash-dgx   MODEL=RadixArk/Qwen3.8-Flash-Next-NVFP4
 set -euo pipefail
@@ -34,6 +37,9 @@ GPU_MEM="${GPU_MEM:-0.85}"
 MTP="${MTP:-2}"
 KV_DTYPE="${KV_DTYPE:-auto}"
 PREWARM="${PREWARM:-0}"
+BATCH_TOKENS="${BATCH_TOKENS:-8192}"
+PLE_TRIM_MIB="${PLE_TRIM_MIB:-0}"
+PLE_TRIM_MIN_ROWS="${PLE_TRIM_MIN_ROWS:-0}"
 EXTRA="${EXTRA:-}"
 
 # Resolve the local snapshot directory and map it to the in-container mount.
@@ -76,12 +82,14 @@ docker run -d --name "$NAME" --restart unless-stopped \
   --gpus all --ipc=host --shm-size 16g -p "${PORT}:8000" \
   -v "$HF_CACHE:/hf" -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 \
   -e VLLM_PLE_MMAP=1 -e VLLM_PLE_MMAP_WORKERS="${WORKERS:-32}" -e VLLM_PLE_MMAP_PREWARM="$PREWARM" \
+  -e VLLM_PLE_MMAP_TRIM_AVAILABLE_MIB="$PLE_TRIM_MIB" \
+  -e VLLM_PLE_MMAP_TRIM_MIN_ROWS="$PLE_TRIM_MIN_ROWS" \
   -e VLLM_USE_FLASHINFER_SAMPLER=1 -e VLLM_ALLOW_LONG_MAX_MODEL_LEN="$ALLOW_LONG" \
   "$IMAGE" \
   "$SNAP_IN" --served-model-name qwen3.8-flash-next \
     --host 0.0.0.0 --port 8000 --load-format safetensors \
     --max-model-len "$CTX" --max-num-seqs "$SEQS" --gpu-memory-utilization "$GPU_MEM" \
-    --no-enable-prefix-caching --enable-chunked-prefill --max-num-batched-tokens 8192 \
+    --no-enable-prefix-caching --enable-chunked-prefill --max-num-batched-tokens "$BATCH_TOKENS" \
     $CC \
     --no-enable-flashinfer-autotune \
     --kv-cache-dtype "$KV_DTYPE" \

@@ -16,6 +16,10 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import vllm_ple_mmap as m  # noqa: E402
 
+# Exercise the opt-in trimming path in this synthetic test. Gathered values must
+# remain bit-identical even when their clean backing pages are discarded.
+os.environ["VLLM_PLE_MMAP_TRIM_AVAILABLE_MIB"] = "999999999"
+
 ROWS, COLS, PARTS = 100_000, 160, 8
 shard_size = -(-ROWS // PARTS)
 rng = np.random.default_rng(0)
@@ -97,4 +101,6 @@ except IndexError:
 
 t.prewarm()
 print("prewarm: OK")
+assert t._trim_count > 0
+print("low-memory page-cache trim: OK")
 print("ALL OK")

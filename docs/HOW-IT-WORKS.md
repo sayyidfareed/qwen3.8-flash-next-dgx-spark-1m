@@ -1,5 +1,11 @@
 # How it works
 
+> **Historical upstream foundation.** This document explains the original mmap-
+> PLE design and its 500K ceiling. The 1M extension adds random-access mmap advice,
+> pressure-triggered clean-page eviction, a smaller chunked-prefill budget, and a
+> single-sequence MTP1 profile. See [BENCHMARKS.md](BENCHMARKS.md) and the project
+> README for the validated 1M configuration.
+
 ## The memory problem
 
 Qwen3.8-Flash-Next is a sparse MoE with an unusual extra component: a **51B-parameter

@@ -1,0 +1,12 @@
+Qwen3.8-Flash-Next DGX Spark 1M Recipe
+
+This repository is derived from blazux/qwen3.8-Flash-DGX at commit
+d2854bfff0a0b6f46984b0941ed1db6010031295, originally Copyright 2026 blazux
+and licensed under the Apache License, Version 2.0.
+
+The repository does not redistribute Qwen or RadixArk model weights. Model
+weights and related artifacts remain subject to their respective license terms.
+
+Project and product names are used only for identification. NVIDIA, DGX, Qwen,
+Alibaba, RadixArk, Hugging Face, and vLLM are trademarks or names of their
+respective owners. No endorsement is implied.

@@ -1,0 +1,18 @@
+{
+  "target_tokens": 985000,
+  "prompt_characters": 3649123,
+  "calibrated_characters_per_token": 3.7046511627906975,
+  "prompt_tokens": 989734,
+  "completion_tokens": 67,
+  "elapsed_seconds": 998.1877319812775,
+  "estimated_prefill_tokens_per_second": 991.5309197754837,
+  "needles_found": {
+    "ALPHA": true,
+    "BRAVO": true,
+    "CHARLIE": true,
+    "DELTA": true,
+    "ECHO": true
+  },
+  "score": "5/5",
+  "response": "K7-VIOLET-314159, M2-CEDAR-271828, R9-QUARTZ-161803, T4-HARBOR-141421, W8-JUNIPER-173205"
+}

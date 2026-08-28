@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If this recipe helps your work, cite this repository and the upstream Qwen3.8-Flash-DGX project."
+title: "Qwen3.8-Flash-Next DGX Spark 1M Recipe"
+type: software
+authors:
+  - name: "sayyidfareed"
+repository-code: "https://github.com/sayyidfareed/qwen3.8-flash-next-dgx-spark-1m"
+url: "https://huggingface.co/sayyidfareed/Qwen3.8-Flash-Next-DGX-Spark-1M-Recipe"
+license: Apache-2.0
+date-released: 2026-08-28

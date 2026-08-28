@@ -32,6 +32,13 @@ Knobs (env):
   VLLM_PLE_MMAP_PREWARM=0    1 = stream the whole table once at load to fill the
                              page cache with whatever memory is free (harmless,
                              evictable; ~10 s at 4.7 GB/s)
+  VLLM_PLE_MMAP_TRIM_AVAILABLE_MIB=0
+                             When nonzero, discard clean PLE mmap pages whenever
+                             Linux MemAvailable falls below this watermark. This
+                             is intended for single-sequence ultra-long context.
+  VLLM_PLE_MMAP_TRIM_MIN_ROWS=0
+                             Only check/trim after gathers at least this large.
+                             Set to 1024+ to keep decode-token lookups fast.
 
 Install: the Dockerfile copies this file next to vllm and appends
 ``_ple_mmap_apply(Qwen3_8FlashNextNGramEmbedding)`` to the end of
@@ -44,10 +51,12 @@ import glob
 import json
 import logging
 import math
+import mmap
 import os
 import re
 import struct
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Iterable
 
@@ -113,14 +122,76 @@ class MmapPleTable:
         self.chunk = max(1, int(chunk))
         self.paths: list[str | None] = [None] * (max(shards) + 1)
         self.mm: list[np.memmap | None] = [None] * (max(shards) + 1)
+        self.trim_available_bytes = max(
+            0, _env_int("VLLM_PLE_MMAP_TRIM_AVAILABLE_MIB", 0)
+        ) * (1 << 20)
+        self.trim_min_rows = max(0, _env_int("VLLM_PLE_MMAP_TRIM_MIN_ROWS", 0))
+        self._trim_lock = threading.Lock()
+        self._trim_count = 0
         self.rows_total = 0
         for idx, (path, offset, rows) in shards.items():
             self.paths[idx] = path
             self.mm[idx] = np.memmap(
                 path, dtype=np.uint8, mode="r", offset=offset, shape=(rows, row_bytes)
             )
+            # PLE rows are selected by hashes and are not sequential. Prevent
+            # Linux from spending scarce unified memory on speculative readahead.
+            try:
+                self.mm[idx]._mmap.madvise(mmap.MADV_RANDOM)  # type: ignore[union-attr]
+            except (AttributeError, OSError, ValueError):
+                pass
             self.rows_total += rows
         self.pool = ThreadPoolExecutor(max_workers=max(1, int(workers)))
+
+    @staticmethod
+    def _mem_available_bytes() -> int:
+        try:
+            with open("/proc/meminfo", encoding="ascii") as f:
+                for line in f:
+                    if line.startswith("MemAvailable:"):
+                        return int(line.split()[1]) * 1024
+        except (OSError, ValueError, IndexError):
+            pass
+        return 1 << 62
+
+    def _trim_page_cache_if_needed(self) -> None:
+        """Release clean, re-readable PLE pages before critical pressure."""
+        watermark = self.trim_available_bytes
+        if not watermark or self._mem_available_bytes() >= watermark:
+            return
+        if not self._trim_lock.acquire(blocking=False):
+            return
+        try:
+            available = self._mem_available_bytes()
+            if available >= watermark:
+                return
+            # gather() has copied the selected rows into a fresh array; returned
+            # tensors therefore do not refer to these read-only mmap pages.
+            for mm in self.mm:
+                if mm is None:
+                    continue
+                try:
+                    mm._mmap.madvise(mmap.MADV_DONTNEED)
+                except (AttributeError, OSError, ValueError):
+                    pass
+            if hasattr(os, "posix_fadvise") and hasattr(os, "POSIX_FADV_DONTNEED"):
+                for path in {p for p in self.paths if p is not None}:
+                    fd = os.open(path, os.O_RDONLY)
+                    try:
+                        os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+                    finally:
+                        os.close(fd)
+            self._trim_count += 1
+            if self._trim_count == 1 or self._trim_count % 100 == 0:
+                logger.warning(
+                    "PLE mmap: trimmed clean page cache at %.1f GiB available "
+                    "(watermark %.1f GiB, count %d)",
+                    available / 2**30,
+                    watermark / 2**30,
+                    self._trim_count,
+                )
+        finally:
+            self._trim_lock.release()
 
     def gather(self, ids: np.ndarray) -> np.ndarray:
         """ids: int64 [N] global row ids -> uint8 [N, row_bytes] (a fresh array)."""
@@ -162,7 +233,10 @@ class MmapPleTable:
         else:
             for _ in self.pool.map(run, tasks):
                 pass
-        return out[inverse]
+        result = out[inverse]
+        if ids.size >= self.trim_min_rows:
+            self._trim_page_cache_if_needed()
+        return result
 
     def prewarm(self) -> None:
         """Stream every shard once so the page cache holds as much as it can."""
